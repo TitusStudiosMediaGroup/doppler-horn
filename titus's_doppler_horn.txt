@@ -1,0 +1,61 @@
+--@name Titus's Doppler Horn
+--@author TitusStudios
+--@shared
+
+if SERVER then
+    wire.adjustInputs({"Horn"},{"Number"})
+    
+    hook.add("input","getwirelinks",function(name,val)
+        if name == "Horn" then
+            net.start("")
+                net.writeFloat(val)
+            net.send()
+        end
+    end)
+elseif CLIENT then
+    local SoundOn = "traincraft101trainsounds/horns/p5_13_loop.wav"
+    local SoundOff = "traincraft101trainsounds/horns/p5_13_end.wav"
+    local HornOffDuration = 0.788 --sadly starfall doesnt have sound duration, so you have to input the end sound duration. This is in seconds.
+    local Pitch = 100
+    local SoundLevel = 120
+    local Volume = 1
+    
+    local OldDist = 0
+    local PitchOffset = 0
+    local HornOn = sounds.create(chip(),SoundOn)
+    local HornOff = sounds.create(chip(),SoundOff)
+    HornOn:setPitch(Pitch)
+    HornOff:setPitch(Pitch)
+    HornOn:setSoundLevel(SoundLevel)
+    HornOff:setSoundLevel(SoundLevel)
+    HornOn:setVolume(Volume)
+    HornOff:setVolume(Volume)
+
+    hook.add("think","refresh",function()
+        local CurDist = (player():getPos() - chip():getPos()):getLength()
+        local PitchOffset = PitchOffset + ((CurDist - OldDist) * 0.23 - PitchOffset) * 1
+        OldDist = CurDist
+        
+        if HornOn:isPlaying() == true then
+            HornOn:setPitch(Pitch-PitchOffset)
+        end     
+        
+        if HornOff:isPlaying() == true then
+            HornOff:setPitch(Pitch-PitchOffset)
+        end
+    end)
+    
+    net.receive("",function(len,ply)
+        local var = net.readFloat()
+        if var > 0 then
+            HornOn:play()
+            HornOff:stop()
+        elseif var == 0 then
+            HornOn:stop()
+            HornOff:play()
+            timer.simple(HornOffDuration,function()
+                HornOff:stop()
+            end)
+        end
+    end)
+end
